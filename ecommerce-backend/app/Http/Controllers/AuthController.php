@@ -2,46 +2,54 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\LoginRequest;
-use App\Http\Requests\StoreUserRequest;
 use App\Models\User;
-use App\Traits\HttpResponses;
 
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    use HttpResponses;
-
-    public function login(LoginRequest $request)
+    function rigester(Request $request)
     {
-        $request->validated($request->all());
-
-        if (!Auth::attempt($request->only(['email', 'password']))) {
-            return $this->error('', 'Credentials do not match', 401);
-        }
+        $fields = $request->validate([
+            'name' => 'required|string',
+            'email' => 'required|string|unique:users,email',
+            'password' => 'required|string|confirmed'
+        ]);
+        $user = User::create($fields);
+        $token = $user->createToken($request->name)->plainTextToken;
+        $response = [
+            'user' => $user,
+            'token' => $token
+        ];
+        return response($response, 201);
+    }
+    function login(Request $request)
+    {
+        $fields = $request->validate([
+            'email' => 'required|exists:users',
+            'password' => 'required'
+        ]);
         $user = User::where('email', $request->email)->first();
-        return $this->sucess([
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response([
+                'message' => 'Bad creds'
+            ], 401);
+        }
+        $token = $user->createToken($user->name)->plainTextToken;
+        $response = [
             'user' => $user,
-            'token' => $user->createToken('Api Token of' . $user->name)->plainTextToken
-        ]);
+            'token' => $token
+        ];
+        return response($response, 201);
     }
-    public function register(StoreUserRequest $request)
+
+    function logout(Request $request)
     {
-        $request->validated($request->all());
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password)
+        $request->user()->tokens()->delete();
+        return response([
+            'message' => 'Logged out'
         ]);
-        return $this->sucess([
-            'user' => $user,
-            'token' => $user->createToken('Api Token of' . $user->name)->plainTextToken
-        ]);
-    }
-    public function logout()
-    {
-        return response()->json('This is my logout');
     }
 }

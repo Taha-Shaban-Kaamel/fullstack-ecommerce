@@ -2,27 +2,25 @@
 
 namespace App\Providers;
 
+use App\Models\Post;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
-
+use App\Policies\PostPolicy;
 class AppServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
-     *
-     * @return void
      */
-    public function register()
+    public function register(): void
     {
         //
     }
 
     /**
      * Bootstrap any application services.
-     *
-     * @return void
      */
-    public function boot()
+    public function boot(): void
     {
-        //
+        Gate::policy(Post::class, PostPolicy::class);
     }
 }
